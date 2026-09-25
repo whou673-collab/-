@@ -94,7 +94,7 @@ export async function generateProviderImages(input: {
         const position = start + offset
         return generateImage({
           model: provider.image(input.model),
-          prompt: input.references.length ? { text, images: input.references } : text,
+          prompt: input.references.length ? { text, images: input.references.slice(0, 1) } : text,
           n: 1,
           maxImagesPerCall: 1,
           size: input.size,
