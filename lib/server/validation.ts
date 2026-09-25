@@ -27,6 +27,11 @@ export const generationSchema = z.object({
   requestId: idSchema,
 })
 export const favoriteSchema = z.object({ favorite: z.boolean() }).strict()
+export const uploadSchema = z.object({
+  name: z.string().trim().min(1).max(255),
+  mediaType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
+  size: z.number().int().min(1).max(MAX_UPLOAD_BYTES, '每张参考图不能超过 10 MB。'),
+})
 
 export async function readLimitedBody(response: Response, maxBytes: number): Promise<Uint8Array> {
   const contentLength = Number(response.headers.get('content-length'))

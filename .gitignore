@@ -18,3 +18,4 @@ app/.well-known/workflow/
 .env
 .env.*
 .DS_Store
+/.swc

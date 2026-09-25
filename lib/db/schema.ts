@@ -1,4 +1,6 @@
-import { pgTable, text, timestamp, boolean } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
+import { pgTable, text, timestamp, boolean, uuid, integer, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core'
+import type { Generation, ImageSize, ModelInfo } from '@/lib/studio'
 
 // --- Better Auth required tables -------------------------------------------
 // Column names are camelCase to match Better Auth's defaults. Do not rename.
@@ -77,3 +79,54 @@ export const verification = pgTable('verification', {
 //   userId: text("userId")
 //     .notNull()
 //     .references(() => user.id, { onDelete: "cascade" }),
+
+export const connections = pgTable('studio_connections', {
+  id: uuid('id').primaryKey(),
+  userId: text('userId').notNull(),
+  name: text('name').notNull(),
+  baseUrl: text('baseUrl').notNull(),
+  encryptedKey: text('encryptedKey').notNull(),
+  keyHint: text('keyHint').notNull(),
+  models: jsonb('models').$type<ModelInfo[]>().notNull().default([]),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const assets = pgTable('studio_assets', {
+  id: uuid('id').primaryKey(),
+  userId: text('userId').notNull(),
+  kind: text('kind').$type<'reference' | 'output'>().notNull(),
+  pathname: text('pathname').notNull().unique(),
+  name: text('name').notNull(),
+  mediaType: text('mediaType').notNull(),
+  width: integer('width').notNull().default(0),
+  height: integer('height').notNull().default(0),
+  size: integer('size').notNull().default(0),
+  ready: boolean('ready').notNull().default(false),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index('studio_assets_user_created').on(table.userId, table.createdAt.desc())])
+
+export const generations = pgTable('studio_generations', {
+  id: uuid('id').primaryKey(),
+  userId: text('userId').notNull(),
+  connectionId: uuid('connectionId').notNull(),
+  model: text('model').notNull(),
+  prompt: text('prompt').notNull(),
+  negativePrompt: text('negativePrompt').notNull().default(''),
+  size: text('size').$type<ImageSize>().notNull(),
+  count: integer('count').notNull(),
+  status: text('status').$type<Generation['status']>().notNull().default('queued'),
+  favorite: boolean('favorite').notNull().default(false),
+  referenceIds: uuid('referenceIds').array().notNull().default([]),
+  outputIds: uuid('outputIds').array().notNull().default([]),
+  requestId: uuid('requestId').notNull(),
+  requestHash: text('requestHash').notNull(),
+  runId: text('runId'),
+  error: text('error'),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('studio_generations_userId_requestId_key').on(table.userId, table.requestId),
+  uniqueIndex('studio_generations_active_user').on(table.userId).where(sql`${table.status} in ('queued', 'running')`),
+  index('studio_generations_user_created').on(table.userId, table.createdAt.desc()),
+])
