@@ -1,6 +1,7 @@
 import 'server-only'
 import { generateImage } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
+import { FormData as UndiciFormData } from 'undici'
 import { z } from 'zod'
 import type { ImageSize } from '@/lib/studio'
 import { AppError } from './errors'
@@ -11,6 +12,26 @@ import { MAX_IMAGE_BYTES, readLimitedBody } from './validation'
 const imageResponse = z.object({
   data: z.array(z.object({ b64_json: z.string().optional(), url: z.string().max(8192).optional() })).min(1).max(4),
 })
+
+function normalizeEditBody(body: BodyInit | null | undefined) {
+  if (!(body instanceof globalThis.FormData)) return body
+  const normalized = new UndiciFormData()
+  let imageIndex = 0
+  for (const [key, value] of body.entries()) {
+    if (key !== 'image' && key !== 'image[]') {
+      normalized.append(key, value)
+      continue
+    }
+    imageIndex += 1
+    if (value instanceof Blob) {
+      const extension = value.type === 'image/jpeg' ? 'jpg' : value.type.split('/')[1] || 'png'
+      normalized.append('image', value, `reference-${imageIndex}.${extension}`)
+    } else {
+      normalized.append('image', value)
+    }
+  }
+  return normalized
+}
 
 export function validateImageBase64(value: string) {
   if (!value.length || value.length > Math.ceil(MAX_IMAGE_BYTES / 3) * 4 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value) || value.length % 4 !== 0) {
@@ -48,9 +69,25 @@ export async function generateProviderImages(input: {
     apiKey: input.apiKey,
     fetch: async (request, init) => {
       const url = typeof request === 'string' ? request : request instanceof URL ? request.toString() : request.url
-      if (![`${baseUrl}/images/generations`, `${baseUrl}/images/edits`].includes(url) || init?.method !== 'POST') throw new AppError('已阻止非预期的模型请求。', 400)
-      const response = await safeFetch(url, { ...init, signal }, { maxBytes: Math.ceil(MAX_IMAGE_BYTES * 4 / 3) * input.count + 65536, timeoutMs: 240_000 })
-      if (!response.ok) throw providerStatusError(response.status)
+      const isGeneration = url === `${baseUrl}/images/generations`
+      const isEdit = url === `${baseUrl}/images/edits`
+      if ((!isGeneration && !isEdit) || init?.method !== 'POST') throw new AppError('已阻止非预期的模型请求。', 400)
+      const requestUrl = isEdit ? `${url}?model=${encodeURIComponent(input.model)}` : url
+      const requestBody = isEdit ? normalizeEditBody(init?.body) : init?.body
+      if (isEdit) {
+        const headers = Object.fromEntries(new Headers(init?.headers).entries())
+        if (headers.authorization) headers.authorization = '[redacted]'
+        console.error('[v0] Image edit request headers', headers)
+      }
+      const response = await safeFetch(requestUrl, {
+        ...init,
+        body: requestBody as BodyInit,
+        signal,
+      }, { maxBytes: Math.ceil(MAX_IMAGE_BYTES * 4 / 3) * input.count + 65536, timeoutMs: 240_000 })
+      if (!response.ok) {
+        console.error('[v0] Image provider rejected request', { url: requestUrl, status: response.status, body: (await response.clone().text()).slice(0, 1000) })
+        throw providerStatusError(response.status)
+      }
       return normalizeImageResponse(response, input.count, signal)
     },
   })
