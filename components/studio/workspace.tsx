@@ -120,8 +120,8 @@ export function StudioWorkspace() {
     if (!draft.connectionId || !draft.model) { navigate('connections'); toast.info('先连接 API 并选择一个生图模型。'); return }
     if (!draft.prompt.trim()) return toast.error('请先描述你想生成的画面。')
     const baseParameters = { negativePrompt: draft.negativePrompt, size: draft.size, connectionId: draft.connectionId, model: draft.model, referenceIds: draft.references.map((asset) => asset.id) }
-    const prompts = draft.count === 10 ? singleImageVariants.map((variant) => `${draft.prompt.trim()}\n\n${variant}`) : [draft.prompt]
-    const taskCount = draft.count === 10 ? 1 : draft.count
+    const prompts = [6, 10].includes(draft.count) ? singleImageVariants.slice(0, draft.count).map((variant) => `${draft.prompt.trim()}\n\n${variant}`) : [draft.prompt]
+    const taskCount = [6, 10].includes(draft.count) ? 1 : draft.count
     const fingerprint = JSON.stringify({ ...baseParameters, prompt: draft.prompt, count: draft.count })
     if (submission.current?.fingerprint !== fingerprint) submission.current = { fingerprint, requestId: crypto.randomUUID() }
     submitLock.current = true
