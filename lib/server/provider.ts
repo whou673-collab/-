@@ -86,27 +86,33 @@ export async function generateProviderImages(input: {
   })
   const text = input.negativePrompt ? `${input.prompt}\n\n请避免出现以下内容：${input.negativePrompt}` : input.prompt
   try {
-    const results = await Promise.allSettled(Array.from({ length: input.count }, (_, index) => generateImage({
-      model: provider.image(input.model),
-      prompt: input.references.length ? { text, images: input.references } : text,
-      n: 1,
-      maxImagesPerCall: 1,
-      size: input.size,
-      maxRetries: 0,
-      abortSignal: signal,
-      headers: { 'Idempotency-Key': `${input.requestId}-${index + 1}` },
-    })))
     const images: Uint8Array[] = []
     let firstFailure: unknown
-    for (const [position, result] of results.entries()) {
-      if (result.status === 'rejected') {
-        firstFailure ??= result.reason
-        continue
-      }
-      for (const image of result.value.images) {
-        const bytes = image.uint8Array
-        images.push(bytes)
-        await input.onImage?.(bytes, position)
+    const concurrency = 2
+    for (let start = 0; start < input.count; start += concurrency) {
+      const batch = await Promise.allSettled(Array.from({ length: Math.min(concurrency, input.count - start) }, (_, offset) => {
+        const position = start + offset
+        return generateImage({
+          model: provider.image(input.model),
+          prompt: input.references.length ? { text, images: input.references } : text,
+          n: 1,
+          maxImagesPerCall: 1,
+          size: input.size,
+          maxRetries: 0,
+          abortSignal: signal,
+          headers: { 'Idempotency-Key': `${input.requestId}-${position + 1}` },
+        }).then((result) => ({ position, result }))
+      }))
+      for (const result of batch) {
+        if (result.status === 'rejected') {
+          firstFailure ??= result.reason
+          continue
+        }
+        for (const image of result.value.result.images) {
+          const bytes = image.uint8Array
+          images.push(bytes)
+          await input.onImage?.(bytes, result.value.position)
+        }
       }
     }
     if (!images.length && firstFailure) throw firstFailure
