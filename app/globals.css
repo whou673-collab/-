@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: var(--font-geist-sans), 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-sans: var(--font-studio-sans), 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
 }
 

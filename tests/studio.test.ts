@@ -9,6 +9,7 @@ import { generationSchema, readJson, readLimitedBody, uploadSchema } from '../li
 import { normalizeImageResponse, validateImageBase64 } from '../lib/server/provider'
 import { prepareImage, safeImageName } from '../lib/server/images'
 import { AppError } from '../lib/server/errors'
+import { applicationOrigins, assertSameOrigin } from '../lib/server/origin'
 
 const blockedAddresses = ['127.0.0.1', '0.0.0.0', '10.0.0.8', '172.16.1.1', '192.168.1.2', '169.254.169.254', '100.64.0.1', '192.0.2.1', '224.0.0.1', '::1', '::', 'fc00::1', 'fe80::1', '::ffff:127.0.0.1', '2001:db8::1']
 for (const address of blockedAddresses) test(`拒绝非公网地址 ${address}`, () => assert.equal(isPublicAddress(address), false))
@@ -117,6 +118,21 @@ test('兼容 Base64 图像响应，并拒绝无效数据与私网下载链接', 
   await assert.rejects(normalizeImageResponse(Response.json({ data: [] }), 1), AppError)
   await assert.rejects(normalizeImageResponse(Response.json({ data: [{ b64_json: encoded }, { b64_json: encoded }] }), 1), AppError)
   await assert.rejects(normalizeImageResponse(Response.json({ data: [{ url: 'https://127.0.0.1/image.png' }] }), 1), AppError)
+})
+
+test('仅信任当前应用的精确来源，拒绝缺失或跨站 Origin', () => {
+  const allowed = applicationOrigins({ NODE_ENV: 'development', V0_RUNTIME_URL: 'https://my-preview.example.com', V0_BUILD_URL: 'https://one.v0.build' })
+  assert.doesNotThrow(() => assertSameOrigin(new Request('https://my-preview.example.com/api', { method: 'POST', headers: { origin: 'https://my-preview.example.com' } }), allowed))
+  for (const origin of ['', 'null', 'https://other.v0.build', 'https://my-preview.example.com.evil.test']) {
+    assert.throws(() => assertSameOrigin(new Request('https://my-preview.example.com/api', { method: 'POST', headers: origin ? { origin } : {} }), allowed), AppError)
+  }
+})
+
+test('生产环境不会信任开发预览域名或 localhost', () => {
+  const allowed = applicationOrigins({ NODE_ENV: 'production', VERCEL_PROJECT_PRODUCTION_URL: 'studio.example.com', V0_RUNTIME_URL: 'https://dev.v0.build' })
+  assert.equal(allowed.has('https://studio.example.com'), true)
+  assert.equal(allowed.has('https://dev.v0.build'), false)
+  assert.equal(allowed.has('http://localhost:3000'), false)
 })
 
 test('服务商错误保持安全提示，不包含原始响应', () => {

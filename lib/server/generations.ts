@@ -46,6 +46,14 @@ export async function reserveGeneration(userId: string, input: z.infer<typeof ge
   })
 }
 
+export async function failQueuedGeneration(userId: string, id: string) {
+  await getDb().update(generations).set({
+    status: 'failed',
+    error: '任务启动未能确认，未自动重试。若服务商已开始处理，请先核对调用记录再重新提交。',
+    updatedAt: new Date(),
+  }).where(and(eq(generations.id, id), eq(generations.userId, userId), eq(generations.status, 'queued')))
+}
+
 export async function recordRun(userId: string, id: string, runId: string) {
   await getDb().update(generations).set({ runId }).where(and(eq(generations.id, id), eq(generations.userId, userId)))
 }
