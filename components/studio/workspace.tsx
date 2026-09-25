@@ -106,7 +106,7 @@ export function StudioWorkspace() {
     if (!requireAccount() || submitLock.current || uploadLock.current) return
     if (!draft.connectionId || !draft.model) { navigate('connections'); toast.info('先连接 API 并选择一个生图模型。'); return }
     if (!draft.prompt.trim()) return toast.error('请先描述你想生成的画面。')
-    const generationGuardrails = '每张输出图片只能出现同一位角色、一个人，禁止四宫格、拼图、分屏、多人物或把多张图合并在一张画布中。每张图的表情、眼神和情绪必须明显不同，并将面部表情作为首要变化重点；同时变化服装细节、姿势和动作，但保持角色脸部特征、发色、眼睛颜色与整体设定一致。保留完整人物构图，避免裁切、文字和水印。'
+    const generationGuardrails = '每张输出图片只能出现同一位角色、一个人，禁止四宫格、拼图、分屏、多人物或把多张图合并在一张画布中。每张图的表情、眼神和情绪必须明显不同，并将面部表情作为首要变化重点；同时变化服装细节、姿势和动作，但保持角色脸部特征、发色、眼睛颜色与整体设定一致。构图必须是大幅角色插画，优先胸像、半身或近景特写，放大人物主体与脸部表情，不要全身立绘、不要强行显示鞋子或完整身体；画面可以自然裁切身体边缘，但脸部、发型、服装和动作重点要清晰。避免文字和水印。'
     const effectivePrompt = `${draft.prompt.trim()}\n\n【一致性与变化要求】${generationGuardrails}`
     const baseParameters = { negativePrompt: draft.negativePrompt, size: draft.size, connectionId: draft.connectionId, model: draft.model, referenceIds: draft.references.map((asset) => asset.id) }
     const prompts = [effectivePrompt]
