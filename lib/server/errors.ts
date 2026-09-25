@@ -16,6 +16,6 @@ export function errorResponse(error: unknown) {
   if (error instanceof ZodError) return json({ error: error.issues[0]?.message || '提交的参数不正确。' }, 400)
   if (error instanceof SyntaxError) return json({ error: '请求内容不是有效的 JSON。' }, 400)
   // Never log provider responses: they can contain prompts, credentials or image data.
-  console.error('[studio] Request failed:', error instanceof Error ? { name: error.name, message: error.message } : 'UnknownError')
+  console.error('[studio] Request failed:', error instanceof Error ? error.name : 'UnknownError')
   return json({ error: '服务暂时不可用，请稍后重试。' }, 503)
 }

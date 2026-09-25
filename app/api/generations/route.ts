@@ -36,8 +36,5 @@ export async function POST(request: Request) {
     // Once enqueued, a metadata-write failure must never launch a second billable run.
     await recordRun(userId, generation.id, runId).catch(() => console.error('[studio] Workflow metadata update deferred'))
     return json({ id: generation.id }, 202)
-  } catch (error) {
-    console.error('[v0] generation POST failure', error)
-    return errorResponse(error)
-  }
+  } catch (error) { return errorResponse(error) }
 }
