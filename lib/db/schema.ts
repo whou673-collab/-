@@ -127,6 +127,5 @@ export const generations = pgTable('studio_generations', {
   updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   uniqueIndex('studio_generations_userId_requestId_key').on(table.userId, table.requestId),
-  uniqueIndex('studio_generations_active_user').on(table.userId).where(sql`${table.status} in ('queued', 'running')`),
   index('studio_generations_user_created').on(table.userId, table.createdAt.desc()),
 ])

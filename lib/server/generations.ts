@@ -28,8 +28,6 @@ export async function reserveGeneration(userId: string, input: z.infer<typeof ge
       if (existing.requestHash !== requestHash) throw new AppError('同一次提交不能使用不同的参数，请重新发起创作。', 409)
       return { id: existing.id, created: false }
     }
-    const active = await tx.select({ id: generations.id }).from(generations).where(and(eq(generations.userId, userId), inArray(generations.status, [...activeStatuses]))).limit(1)
-    if (active.length) throw new AppError('已有一项任务正在生成，请完成后再提交，避免误触重复计费。', 409)
     const [recent] = await tx.select({ total: count() }).from(generations).where(and(eq(generations.userId, userId), sql`${generations.createdAt} > now() - interval '1 hour'`))
     if (recent.total >= 60) throw new AppError('已达到每小时 60 次的安全提交上限，请稍后再试。', 429)
     const [connection] = await tx.select({ models: connections.models }).from(connections).where(and(eq(connections.id, input.connectionId), eq(connections.userId, userId))).limit(1)

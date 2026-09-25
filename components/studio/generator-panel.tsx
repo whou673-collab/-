@@ -70,6 +70,7 @@ export function GeneratorPanel({ draft, onChange, connections, onConnections, on
             <Field>
               <FieldLabel>生成数量</FieldLabel>
               <ToggleGroup value={[String(draft.count)]} onValueChange={(values) => { if (values[0]) onChange({ count: Number(values[0]) }) }} variant="outline" className="w-full" aria-label="生成数量">{[1, 2, 4, 10].map((count) => <ToggleGroupItem key={count} value={String(count)} className="h-9 flex-1">{count} 张</ToggleGroupItem>)}</ToggleGroup>
+              {draft.count === 10 && <p className="text-sm leading-relaxed text-muted-foreground">10 张会拆成 10 个独立单图任务提交，每张使用不同动作与造型组合。</p>}
             </Field>
           </FieldGroup>
         </div>
