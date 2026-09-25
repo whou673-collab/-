@@ -28,9 +28,9 @@ export const generationSchema = z.object({
 })
 export const favoriteSchema = z.object({ favorite: z.boolean() }).strict()
 export const uploadSchema = z.object({
-  name: z.string().trim().min(1).max(255),
-  mediaType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
-  size: z.number().int().min(1).max(MAX_UPLOAD_BYTES, '每张参考图不能超过 10 MB。'),
+  name: z.string().trim().min(1, '图片文件名不能为空。').max(255, '图片文件名过长，请重命名后重试。'),
+  mediaType: z.enum(['image/png', 'image/jpeg', 'image/webp'], { error: '仅支持 JPG、PNG 和 WebP 图片。' }),
+  size: z.number().int().min(1, '所选图片为空，请选择有内容的图片后重试。').max(MAX_UPLOAD_BYTES, '每张参考图不能超过 10 MB。'),
 })
 
 export async function readLimitedBody(response: Response, maxBytes: number): Promise<Uint8Array> {

@@ -87,6 +87,7 @@ export function StudioWorkspace() {
     const remaining = 6 - draft.references.length
     if (files.length > remaining) return toast.error(`最多上传 6 张参考图，还可添加 ${remaining} 张。`)
     if (files.some((file) => !['image/png', 'image/jpeg', 'image/webp'].includes(file.type))) return toast.error('仅支持 JPG、PNG 和 WebP 图片。')
+    if (files.some((file) => file.size === 0)) return toast.error('所选图片为空，请选择有内容的图片后重试。')
     if (files.some((file) => file.size > 10 * 1024 * 1024)) return toast.error('每张参考图不能超过 10 MB。')
     uploadLock.current = true
     setUploading(true)

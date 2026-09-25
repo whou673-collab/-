@@ -87,6 +87,12 @@ test('参考图限制为 10 MB 和静态图像类型', () => {
   assert.equal(uploadSchema.safeParse({ name: 'test.svg', mediaType: 'image/svg+xml', size: 100 }).success, false)
 })
 
+test('空参考图在上传前被拒绝并返回清晰中文提示', () => {
+  const result = uploadSchema.safeParse({ name: 'empty.png', mediaType: 'image/png', size: 0 })
+  assert.equal(result.success, false)
+  if (!result.success) assert.equal(result.error.issues[0].message, '所选图片为空，请选择有内容的图片后重试。')
+})
+
 test('读取流时限制真实字节数，而非只信任响应头', async () => {
   const stream = new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new Uint8Array(10)); controller.enqueue(new Uint8Array(10)); controller.close() } })
   await assert.rejects(readLimitedBody(new Response(stream, { headers: { 'content-length': '1' } }), 15), AppError)
