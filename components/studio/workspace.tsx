@@ -120,13 +120,13 @@ export function StudioWorkspace() {
       })))
       const successful = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])
       const failed = results.length - successful.length
-      if (!successful.length) throw new Error('10 个单图任务都未能提交，请检查 API 连接和模型参数。')
+      if (!successful.length) throw new Error('图像任务未能提交，请检查 API 连接和模型参数。')
       submission.current = null
       setSelectedId(successful[0].id)
       navigate('create')
       await refreshHistory()
-      if (failed) toast.warning(`已提交 ${successful.length} / ${results.length} 个单图任务，${failed} 个任务提交失败。`)
-      else toast.success(draft.count === 10 ? '已提交 10 个独立单图任务，将逐张保存到历史。' : '生成任务已提交，将自动保存到历史。')
+      if (failed) toast.warning(`已提交 ${successful.length} / ${results.length} 个图像任务，${failed} 个任务提交失败。`)
+      else toast.success(draft.count > 1 ? `已提交一次多图生成任务，将保存最多 ${draft.count} 张结果。` : '生成任务已提交，将自动保存到历史。')
     } catch (error) { toast.error(errorMessage(error)); void refreshHistory() }
     finally { submitLock.current = false; setSubmitting(false) }
   }
