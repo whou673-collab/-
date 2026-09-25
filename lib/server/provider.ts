@@ -74,20 +74,12 @@ export async function generateProviderImages(input: {
       if ((!isGeneration && !isEdit) || init?.method !== 'POST') throw new AppError('已阻止非预期的模型请求。', 400)
       const requestUrl = isEdit ? `${url}?model=${encodeURIComponent(input.model)}` : url
       const requestBody = isEdit ? normalizeEditBody(init?.body) : init?.body
-      if (isEdit) {
-        const headers = Object.fromEntries(new Headers(init?.headers).entries())
-        if (headers.authorization) headers.authorization = '[redacted]'
-        console.error('[v0] Image edit request headers', headers)
-      }
       const response = await safeFetch(requestUrl, {
         ...init,
         body: requestBody as BodyInit,
         signal,
       }, { maxBytes: Math.ceil(MAX_IMAGE_BYTES * 4 / 3) * input.count + 65536, timeoutMs: 240_000 })
-      if (!response.ok) {
-        console.error('[v0] Image provider rejected request', { url: requestUrl, status: response.status, body: (await response.clone().text()).slice(0, 1000) })
-        throw providerStatusError(response.status)
-      }
+      if (!response.ok) throw providerStatusError(response.status)
       return normalizeImageResponse(response, input.count, signal)
     },
   })
