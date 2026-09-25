@@ -86,24 +86,30 @@ export async function generateProviderImages(input: {
   })
   const text = input.negativePrompt ? `${input.prompt}\n\n请避免出现以下内容：${input.negativePrompt}` : input.prompt
   try {
+    const results = await Promise.allSettled(Array.from({ length: input.count }, (_, index) => generateImage({
+      model: provider.image(input.model),
+      prompt: input.references.length ? { text, images: input.references } : text,
+      n: 1,
+      maxImagesPerCall: 1,
+      size: input.size,
+      maxRetries: 0,
+      abortSignal: signal,
+      headers: { 'Idempotency-Key': `${input.requestId}-${index + 1}` },
+    })))
     const images: Uint8Array[] = []
-    for (let index = 0; index < input.count; index += 1) {
-      const result = await generateImage({
-        model: provider.image(input.model),
-        prompt: input.references.length ? { text, images: input.references } : text,
-        n: 1,
-        maxImagesPerCall: 1,
-        size: input.size,
-        maxRetries: 0,
-        abortSignal: signal,
-        headers: { 'Idempotency-Key': `${input.requestId}-${index + 1}` },
-      })
-      for (const image of result.images) {
+    let firstFailure: unknown
+    for (const [position, result] of results.entries()) {
+      if (result.status === 'rejected') {
+        firstFailure ??= result.reason
+        continue
+      }
+      for (const image of result.value.images) {
         const bytes = image.uint8Array
         images.push(bytes)
-        await input.onImage?.(bytes, images.length - 1)
+        await input.onImage?.(bytes, position)
       }
     }
+    if (!images.length && firstFailure) throw firstFailure
     return images
   } catch (error) {
     if (error instanceof AppError) throw error
