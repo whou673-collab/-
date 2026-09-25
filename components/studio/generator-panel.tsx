@@ -69,7 +69,7 @@ export function GeneratorPanel({ draft, onChange, connections, onConnections, on
             </Field>
             <Field>
               <FieldLabel>生成数量</FieldLabel>
-              <ToggleGroup value={[String(draft.count)]} onValueChange={(values) => { if (values[0]) onChange({ count: Number(values[0]) }) }} variant="outline" className="w-full" aria-label="生成数量">{[1, 2, 4].map((count) => <ToggleGroupItem key={count} value={String(count)} className="h-9 flex-1">{count} 张</ToggleGroupItem>)}</ToggleGroup>
+              <ToggleGroup value={[String(draft.count)]} onValueChange={(values) => { if (values[0]) onChange({ count: Number(values[0]) }) }} variant="outline" className="w-full" aria-label="生成数量">{[1, 2, 4, 10].map((count) => <ToggleGroupItem key={count} value={String(count)} className="h-9 flex-1">{count} 张</ToggleGroupItem>)}</ToggleGroup>
             </Field>
           </FieldGroup>
         </div>

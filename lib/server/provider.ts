@@ -10,7 +10,7 @@ import { providerStatusError } from './models'
 import { MAX_IMAGE_BYTES, readLimitedBody } from './validation'
 
 const imageResponse = z.object({
-  data: z.array(z.object({ b64_json: z.string().optional(), url: z.string().max(8192).optional() })).min(1).max(4),
+  data: z.array(z.object({ b64_json: z.string().optional(), url: z.string().max(8192).optional() })).min(1).max(10),
 })
 
 function normalizeEditBody(body: BodyInit | null | undefined) {
@@ -85,17 +85,17 @@ export async function generateProviderImages(input: {
   })
   const text = input.negativePrompt ? `${input.prompt}\n\n请避免出现以下内容：${input.negativePrompt}` : input.prompt
   try {
-    const result = await generateImage({
+    const results = await Promise.all(Array.from({ length: input.count }, (_, index) => generateImage({
       model: provider.image(input.model),
       prompt: input.references.length ? { text, images: input.references } : text,
-      n: input.count,
-      maxImagesPerCall: input.count,
+      n: 1,
+      maxImagesPerCall: 1,
       size: input.size,
       maxRetries: 0,
       abortSignal: signal,
-      headers: { 'Idempotency-Key': input.requestId },
-    })
-    return result.images.map((image) => image.uint8Array)
+      headers: { 'Idempotency-Key': `${input.requestId}-${index + 1}` },
+    })))
+    return results.flatMap((result) => result.images.map((image) => image.uint8Array))
   } catch (error) {
     if (error instanceof AppError) throw error
     if (signal.aborted) throw new AppError('生成超时；服务商可能已产生费用。请先核对服务商记录，不会自动重试。', 504)
