@@ -75,7 +75,8 @@ test('缺失加密配置时拒绝保存，不降级为明文', () => {
 test('参数验证限制数量并拒绝重复参考图', () => {
   const input = { connectionId: randomUUID(), model: 'test-model', prompt: '一片海', size: '1024x1024', count: 1, requestId: randomUUID() }
   assert.equal(generationSchema.parse(input).count, 1)
-  for (const count of [0, -1, 1.5, 5]) assert.equal(generationSchema.safeParse({ ...input, count }).success, false)
+  for (const count of [0, -1, 1.5, 11]) assert.equal(generationSchema.safeParse({ ...input, count }).success, false)
+  assert.equal(generationSchema.safeParse({ ...input, count: 10 }).success, true)
   const id = randomUUID()
   assert.equal(generationSchema.safeParse({ ...input, referenceIds: [id, id] }).success, false)
   assert.equal(generationSchema.safeParse({ ...input, prompt: ' ' }).success, false)

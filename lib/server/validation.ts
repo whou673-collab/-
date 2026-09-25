@@ -22,7 +22,7 @@ export const generationSchema = z.object({
   prompt: z.string().trim().min(1, '请先描述画面。').max(12000, '提示词不能超过 12000 个字符。'),
   negativePrompt: z.string().trim().max(3000).default(''),
   size: imageSizeSchema,
-  count: z.number().int().min(1).max(4, '一次最多生成 4 张图片。'),
+  count: z.number().int().min(1).max(10, '一次最多生成 10 张图片。'),
   referenceIds: z.array(idSchema).max(MAX_REFERENCES).default([]).refine((ids) => new Set(ids).size === ids.length, '参考图不能重复。'),
   requestId: idSchema,
 })
