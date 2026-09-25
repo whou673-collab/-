@@ -106,8 +106,10 @@ export function StudioWorkspace() {
     if (!requireAccount() || submitLock.current || uploadLock.current) return
     if (!draft.connectionId || !draft.model) { navigate('connections'); toast.info('先连接 API 并选择一个生图模型。'); return }
     if (!draft.prompt.trim()) return toast.error('请先描述你想生成的画面。')
+    const generationGuardrails = '每张输出图片只能出现同一位角色、一个人，禁止四宫格、拼图、分屏、多人物或把多张图合并在一张画布中。每张图的表情、眼神和情绪必须明显不同，并将面部表情作为首要变化重点；同时变化服装细节、姿势和动作，但保持角色脸部特征、发色、眼睛颜色与整体设定一致。保留完整人物构图，避免裁切、文字和水印。'
+    const effectivePrompt = `${draft.prompt.trim()}\n\n【一致性与变化要求】${generationGuardrails}`
     const baseParameters = { negativePrompt: draft.negativePrompt, size: draft.size, connectionId: draft.connectionId, model: draft.model, referenceIds: draft.references.map((asset) => asset.id) }
-    const prompts = [draft.prompt]
+    const prompts = [effectivePrompt]
     const taskCount = draft.count
     const fingerprint = JSON.stringify({ ...baseParameters, prompt: draft.prompt, count: draft.count })
     if (submission.current?.fingerprint !== fingerprint) submission.current = { fingerprint, requestId: crypto.randomUUID() }
