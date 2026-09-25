@@ -61,6 +61,7 @@ export async function normalizeImageResponse(response: Response, count: number, 
 export async function generateProviderImages(input: {
   baseUrl: string; apiKey: string; model: string; prompt: string; negativePrompt: string
   size: ImageSize; count: number; references: Uint8Array[]; requestId: string
+  onImage?: (image: Uint8Array, position: number) => Promise<void>
 }) {
   const baseUrl = normalizeApiBase(input.baseUrl)
   const signal = AbortSignal.timeout(240_000)
@@ -85,17 +86,25 @@ export async function generateProviderImages(input: {
   })
   const text = input.negativePrompt ? `${input.prompt}\n\n请避免出现以下内容：${input.negativePrompt}` : input.prompt
   try {
-    const results = await Promise.all(Array.from({ length: input.count }, (_, index) => generateImage({
-      model: provider.image(input.model),
-      prompt: input.references.length ? { text, images: input.references } : text,
-      n: 1,
-      maxImagesPerCall: 1,
-      size: input.size,
-      maxRetries: 0,
-      abortSignal: signal,
-      headers: { 'Idempotency-Key': `${input.requestId}-${index + 1}` },
-    })))
-    return results.flatMap((result) => result.images.map((image) => image.uint8Array))
+    const images: Uint8Array[] = []
+    for (let index = 0; index < input.count; index += 1) {
+      const result = await generateImage({
+        model: provider.image(input.model),
+        prompt: input.references.length ? { text, images: input.references } : text,
+        n: 1,
+        maxImagesPerCall: 1,
+        size: input.size,
+        maxRetries: 0,
+        abortSignal: signal,
+        headers: { 'Idempotency-Key': `${input.requestId}-${index + 1}` },
+      })
+      for (const image of result.images) {
+        const bytes = image.uint8Array
+        images.push(bytes)
+        await input.onImage?.(bytes, images.length - 1)
+      }
+    }
+    return images
   } catch (error) {
     if (error instanceof AppError) throw error
     if (signal.aborted) throw new AppError('生成超时；服务商可能已产生费用。请先核对服务商记录，不会自动重试。', 504)

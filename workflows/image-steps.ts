@@ -15,8 +15,8 @@ export async function runImageStep(generationId: string, userId: string): Promis
       baseUrl: connection.baseUrl, apiKey: connection.apiKey, model: generation.model,
       prompt: generation.prompt, negativePrompt: generation.negativePrompt, size: generation.size,
       count: generation.count, requestId: generation.requestId, references,
+      onImage: async (image, position) => { await saveGeneratedImage(userId, generationId, image, position) },
     })
-    for (const [position, image] of images.entries()) await saveGeneratedImage(userId, generationId, image, position)
     return { status: 'completed', error: images.length < generation.count ? `服务商仅返回 ${images.length} / ${generation.count} 张图片，已保存现有结果，未补发请求。` : null }
   } catch (error) {
     return { status: 'failed', error: error instanceof AppError ? error.message : '图片生成或保存未能完成。已保存的图片仍可查看，不会自动重新调用生图 API。' }
