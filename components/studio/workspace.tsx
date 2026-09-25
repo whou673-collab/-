@@ -32,19 +32,6 @@ const titles: Record<StudioView, { title: string; description: string; label: st
 
 type HistoryPage = { items: Generation[]; hasMore: boolean }
 
-const singleImageVariants = [
-  '构图变体：成年女性角色回眸，黑色蕾丝袜，棕色乐福鞋，温柔自信的微笑。',
-  '构图变体：成年女性角色整理蝴蝶结，半透黑丝袜，黑色玛丽珍鞋，俏皮眨眼。',
-  '构图变体：成年女性角色轻抬裙角，白色过膝袜，棕色短靴，害羞但自然的表情。',
-  '构图变体：成年女性角色双手交叠站立，奶油色泡泡袜，低跟鞋，优雅微笑。',
-  '构图变体：成年女性角色单手托腮，灰色及膝袜，校园运动鞋，认真又可爱的表情。',
-  '构图变体：成年女性角色轻轻挥手，红黑条纹袜，黑色乐福鞋，明快开朗的笑容。',
-  '构图变体：成年女性角色自然迈步，白色蕾丝袜，玛丽珍鞋，回头看向镜头。',
-  '构图变体：成年女性角色靠近校园窗边，半透灰丝袜，短靴，温柔而自信的眼神。',
-  '构图变体：成年女性角色双手轻放身前，黑色过膝袜，低跟鞋，成熟从容的微笑。',
-  '构图变体：成年女性角色站在校园走廊，白色过膝袜，校园运动鞋，轻松自然地眨眼。',
-]
-
 export function StudioWorkspace() {
   const [view, setView] = useState<StudioView>('create')
   const [draft, setDraft] = useState<Draft>(initialDraft)
@@ -120,7 +107,8 @@ export function StudioWorkspace() {
     if (!draft.connectionId || !draft.model) { navigate('connections'); toast.info('先连接 API 并选择一个生图模型。'); return }
     if (!draft.prompt.trim()) return toast.error('请先描述你想生成的画面。')
     const baseParameters = { negativePrompt: draft.negativePrompt, size: draft.size, connectionId: draft.connectionId, model: draft.model, referenceIds: draft.references.map((asset) => asset.id) }
-    const prompts = [6, 10].includes(draft.count) ? singleImageVariants.slice(0, draft.count).map((variant) => `${draft.prompt.trim()}\n\n${variant}`) : [draft.prompt]
+    const singleCharacterPrompt = `${draft.prompt.trim()}\n\n画面中只能有一位完整的成年女性角色，只呈现一个动作和一个姿态；单人全身立绘，角色占据画面主体。不要四宫格，不要分屏，不要拼图，不要同一张图出现多个角色或多个姿势，不要角色组图。`
+    const prompts = [6, 10].includes(draft.count) ? Array.from({ length: draft.count }, () => singleCharacterPrompt) : [draft.prompt]
     const taskCount = [6, 10].includes(draft.count) ? 1 : draft.count
     const fingerprint = JSON.stringify({ ...baseParameters, prompt: draft.prompt, count: draft.count })
     if (submission.current?.fingerprint !== fingerprint) submission.current = { fingerprint, requestId: crypto.randomUUID() }
