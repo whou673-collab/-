@@ -32,19 +32,6 @@ const titles: Record<StudioView, { title: string; description: string; label: st
 
 type HistoryPage = { items: Generation[]; hasMore: boolean }
 
-const singleImageVariants = [
-  '构图变体：成年女性角色回眸，黑色蕾丝袜，棕色乐福鞋，温柔自信的微笑。',
-  '构图变体：成年女性角色整理蝴蝶结，半透黑丝袜，黑色玛丽珍鞋，俏皮眨眼。',
-  '构图变体：成年女性角色轻抬裙角，白色过膝袜，棕色短靴，害羞但自然的表情。',
-  '构图变体：成年女性角色双手交叠站立，奶油色泡泡袜，低跟鞋，优雅微笑。',
-  '构图变体：成年女性角色单手托腮，灰色及膝袜，校园运动鞋，认真又可爱的表情。',
-  '构图变体：成年女性角色轻轻挥手，红黑条纹袜，黑色乐福鞋，明快开朗的笑容。',
-  '构图变体：成年女性角色自然迈步，白色蕾丝袜，玛丽珍鞋，回头看向镜头。',
-  '构图变体：成年女性角色靠近校园窗边，半透灰丝袜，短靴，温柔而自信的眼神。',
-  '构图变体：成年女性角色双手轻放身前，黑色过膝袜，低跟鞋，成熟从容的微笑。',
-  '构图变体：成年女性角色站在校园走廊，白色过膝袜，校园运动鞋，轻松自然地眨眼。',
-]
-
 export function StudioWorkspace() {
   const [view, setView] = useState<StudioView>('create')
   const [draft, setDraft] = useState<Draft>(initialDraft)
@@ -119,9 +106,11 @@ export function StudioWorkspace() {
     if (!requireAccount() || submitLock.current || uploadLock.current) return
     if (!draft.connectionId || !draft.model) { navigate('connections'); toast.info('先连接 API 并选择一个生图模型。'); return }
     if (!draft.prompt.trim()) return toast.error('请先描述你想生成的画面。')
+    const generationGuardrails = '每张输出图片只能出现同一位角色、一个人，禁止四宫格、拼图、分屏、多人物或把多张图合并在一张画布中。每张图的表情、眼神和情绪必须明显不同，并将面部表情作为首要变化重点；同时变化服装细节、姿势和动作，但保持角色脸部特征、发色、眼睛颜色与整体设定一致。构图必须是大幅角色插画，优先胸像、半身或近景特写，放大人物主体与脸部表情，不要全身立绘、不要强行显示鞋子或完整身体；画面可以自然裁切身体边缘，但脸部、发型、服装和动作重点要清晰。避免文字和水印。'
+    const effectivePrompt = `${draft.prompt.trim()}\n\n【一致性与变化要求】${generationGuardrails}`
     const baseParameters = { negativePrompt: draft.negativePrompt, size: draft.size, connectionId: draft.connectionId, model: draft.model, referenceIds: draft.references.map((asset) => asset.id) }
-    const prompts = draft.count === 10 ? singleImageVariants.map((variant) => `${draft.prompt.trim()}\n\n${variant}`) : [draft.prompt]
-    const taskCount = draft.count === 10 ? 1 : draft.count
+    const prompts = [effectivePrompt]
+    const taskCount = draft.count
     const fingerprint = JSON.stringify({ ...baseParameters, prompt: draft.prompt, count: draft.count })
     if (submission.current?.fingerprint !== fingerprint) submission.current = { fingerprint, requestId: crypto.randomUUID() }
     submitLock.current = true
@@ -133,13 +122,13 @@ export function StudioWorkspace() {
       })))
       const successful = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])
       const failed = results.length - successful.length
-      if (!successful.length) throw new Error('10 个单图任务都未能提交，请检查 API 连接和模型参数。')
+      if (!successful.length) throw new Error('图像任务未能提交，请检查 API 连接和模型参数。')
       submission.current = null
       setSelectedId(successful[0].id)
       navigate('create')
       await refreshHistory()
-      if (failed) toast.warning(`已提交 ${successful.length} / ${results.length} 个单图任务，${failed} 个任务提交失败。`)
-      else toast.success(draft.count === 10 ? '已提交 10 个独立单图任务，将逐张保存到历史。' : '生成任务已提交，将自动保存到历史。')
+      if (failed) toast.warning(`已提交 ${successful.length} / ${results.length} 个图像任务，${failed} 个任务提交失败。`)
+      else toast.success(draft.count > 1 ? `已提交一次多图生成任务，将保存最多 ${draft.count} 张结果。` : '生成任务已提交，将自动保存到历史。')
     } catch (error) { toast.error(errorMessage(error)); void refreshHistory() }
     finally { submitLock.current = false; setSubmitting(false) }
   }
